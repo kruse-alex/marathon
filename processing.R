@@ -8,59 +8,71 @@ require(chron)
 require(lubridate)
 require(tmaptools)
 require(gganimate)
+require(plotly)
+require(extrafont)
+
+# load more fonts for plotting (via extrafont package)
+loadfonts(device = "win")
+
+# import alster
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/alster.kml")
+alster = readOGR("alster.kml",import[1])
+alster = fortify(alster)
+
+# import alster
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/alsteraus.kml")
+alsteraus = readOGR("alsteraus.kml",import[1])
+alsteraus = fortify(alsteraus)
+
+# import stadtpark
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/spark.kml")
+spark = readOGR("spark.kml",import[1])
+spark = fortify(spark)
 
 # import route
 setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/testii.kml")
-l2 = readOGR("testii.kml",import[1],require_geomType="wkbLineString")
-
-
-# import finish line
-setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/testoo.kml")
-l3 = readOGR("testoo.kml",import[1],require_geomType="wkbLineString")
-l3 = double_line(l3, width = .0003, sides = "left")
-
-
-# combine routes
-l2 = rbind(l2, l3)
-
-start = 53.55843, 9.97466 53.55854, 9.97558
-end = 53.5587, 9.97537
-
-# create finish line
-l1 <- cbind(c(9.97466, 9.97558), c(53.55843, 53.55854))
-Sl1 <- Line(l1)
-S1 <- Lines(list(Sl1), ID = "a")
-Sl <- SpatialLines(list(S1))
-df <- data.frame(len = sapply(1:length(Sl), function(i) gLength(Sl[i, ])))
-rownames(df) <- sapply(1:length(Sl), function(i) Sl@lines[[i]]@ID)
-Sldf <- SpatialLinesDataFrame(Sl, data = df)
-oyoy =aggregate(rbind(Sldf,l2))
+import <- ogrListLayers("C:/Users/akruse/Downloads/mlayer.kml")
+l2 = readOGR("mlayer.kml",import[1],require_geomType="wkbLineString")
 
 # offset lines
-res2 = double_line(l2, width = .00003, sides = "left")
-res3 = double_line(l2, width = .00004, sides = "left")
-res4 = double_line(l2, width = .00005, sides = "left")
-res5 = double_line(l2, width = .00006, sides = "left")
-res6 = double_line(l2, width = .00007, sides = "left")
-res7 = double_line(l2, width = .00008, sides = "left")
-res8 = double_line(l2, width = .00009, sides = "left")
-res9 = double_line(l2, width = .00010, sides = "left")
+res6 = double_line(l2, width = .0001, sides = "right")
+res7 = double_line(l2, width = .0003, sides = "right")
+res8 = double_line(l2, width = .0005, sides = "right")
+res9 = double_line(l2, width = .0007, sides = "right")
 
 # convert offset lines to dataframe
 res1 = fortify(l2)
-res2 = fortify(res2)
-res3 = fortify(res3)
-res4 = fortify(res4)
-res5 = fortify(res5)
 res6 = fortify(res6)
 res7 = fortify(res7)
 res8 = fortify(res8)
 res9 = fortify(res9)
 
+# sort dataframes
+res1$seq = seq(1:nrow(res1))
+res1 = res1[order(res1$seq, decreasing = TRUE), ]
+res1$seq = NULL
+
+res6$seq = seq(1:nrow(res6))
+res6 = res6[order(res6$seq, decreasing = TRUE), ]
+res6$seq = NULL
+
+res7$seq = seq(1:nrow(res7))
+res7 = res7[order(res7$seq, decreasing = TRUE), ]
+res7$seq = NULL
+
+res8$seq = seq(1:nrow(res8))
+res8 = res8[order(res8$seq, decreasing = TRUE), ]
+res8$seq = NULL
+
+res9$seq = seq(1:nrow(res9))
+res9 = res9[order(res9$seq, decreasing = TRUE), ]
+res9$seq = NULL
+
 # loop over all offset line
-them_res = list(res1,res2,res3,res4,res5,res6,res7,res8,res9)
+them_res = list(res1,res6,res7,res8,res9)
 datalistall = list()
 its = 1
 for (h in them_res) {
@@ -112,7 +124,7 @@ res$dist_max = res$dist_cum/max(res$dist_cum)
 
 # read in runners data
 data = read.csv("Läufer_20180418_110452.csv")
-data = data[seq(its,nrow(data),9),]
+data = data[seq(its,nrow(data),5),]
 data$Brutto = chron(times = as.character(data$Brutto))
 data$seconds = period_to_seconds(hms(data$Brutto))
 data = select(data, Name, Brutto, seconds)
@@ -142,11 +154,8 @@ all_data = do.call(rbind, datalistall)
 
 
 ggplotly(ggplot() +
-           geom_path(data = res1, aes(x = long, y = lat), size = 3) +
+           geom_path(data = res7, aes(x = long, y = lat), size = 3) +
            geom_path(data = res1, aes(x = long, y = lat, colour = "red"), size = 0.3) +
-           geom_path(data = res2, aes(x = long, y = lat, colour = "red"), size = 0.3) +
-           geom_path(data = res3, aes(x = long, y = lat, colour = "red"), size = 0.3) +
-           geom_path(data = res4, aes(x = long, y = lat, colour = "red"), size = 0.3) +
            geom_path(data = res6, aes(x = long, y = lat, colour = "red"), size = 0.3) +
            geom_path(data = res7, aes(x = long, y = lat, colour = "red"), size = 0.3) +
            geom_path(data = res8, aes(x = long, y = lat, colour = "red"), size = 0.3) +
@@ -160,8 +169,34 @@ ggplotly(ggplot() +
 
 
 p = ggplot(res) +
-  geom_path(aes(long,lat), color = "black", size = 3) +
-  geom_point(data = all_data, aes(x = lon, y = lat, frame = pasted_secs), colour = "red", size = 0.2) +
-  theme_void()
+  geom_polygon(data = spark, aes(x = long, y = lat), fill = "#b1e2aa", color = NA) +
+  geom_polygon(data = alster, aes(x = long, y = lat), fill = "#47b2ff", color = NA) +
+  geom_polygon(data = alsteraus, aes(x = long, y = lat), fill = "#47b2ff", color = NA) +
+  geom_path(aes(long,lat), color = "#e5e5e5", size = 3) +
+  geom_point(data = all_data, aes(x = lon, y = lat, frame = pasted_secs), colour = "red", size = 0.05) +
+  theme(text=element_text(family = "Tw Cen MT"),
+        axis.text.x = element_blank(),
+        axis.text.y = element_blank(),
+        axis.ticks = element_blank(),
+        axis.title.x=element_blank(),
+        axis.title.y=element_blank(),
+        plot.title = element_text(hjust=0.5, size=18, face="bold",colour = "#4e4d47"),
+        plot.caption = element_text(hjust=0.5, size = 8, color = "#4e4d47"),
+        legend.position = "none",
+        plot.subtitle = element_text(color = "red", hjust = 0.5),
+        panel.grid.major = element_line(color = "#ebebe5", size = 0.2),
+        panel.grid.minor = element_blank(),
+        plot.background = element_rect(fill = "#f5f5f2", color = NA), 
+        panel.background = element_rect(fill = "#f5f5f2", color = NA), 
+        legend.background = element_rect(fill = "#f5f5f2", color = NA),
+        panel.border = element_blank()) +
+  labs(caption = "Source: haspa-marathon-hamburg.de") +
+  labs(title = paste0("Haspa Marathon Hamburg 2018"), subtitle = "Time Lapse of all Runners") +
+  geom_text(aes(x=10.01699, y=53.59601, label="Stadtpark"), size=2, colour = "white", family = "Tw Cen MT") +
+  geom_text(aes(x=10.00708, y=53.56442, label="Alster"), size=2, colour = "white", family = "Tw Cen MT")
+
+
+ggsave(filename = "foo300.png", p, dpi = 1000, device='png')
+
 
 gganimate(p,"puit.mp4", interval = 1/10, nmax = 100000000)
