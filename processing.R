@@ -8,37 +8,141 @@ require(chron)
 require(lubridate)
 require(tmaptools)
 require(extrafont)
+require(dcast)
+require(httr)
 
-# load more fonts for plotting (via extrafont package)
+# load more fonts for plot design (via extrafont package)
 loadfonts(device = "win")
 
-# import elbe
-#setwd("C:/Users/akruse/Downloads/")
-#import <- ogrListLayers("C:/Users/akruse/Downloads/elbe.kml")
-#elbe = readOGR("elbe.kml",import[1])
-#elbe = fortify(elbe)
+# scrape data from website for men
+datalistall = list()
+for (j in 1:16) {
+  
+url <- paste("http://hamburg.r.mikatiming.de/2018/?page=",j,"&event=HML&event_main_group=custom.meeting.marathon&num_results=500&pid=list&search[sex]=M&search[age_class]=%25", sep = "")
+doc <- read_html(url)
+check = as.data.frame(html_attr(html_nodes(doc, "a"), "href"))
+colnames(check) = "url"
+check = filter(check, grepl("?content",url))
+check$url = paste("http://hamburg.r.mikatiming.de/2018/",check$url,sep = "")
 
-# import alster
-setwd("C:/Users/Alex/Downloads/")
-import <- ogrListLayers("C:/Users/Alex/Downloads/alster.kml")
+datalist = list()
+for (i in 1:length(check$url)) {
+
+url <- check$url[i]
+population <- url %>%
+  html() %>%
+  html_nodes(xpath='//*[@class="table table-condensed table-striped"]') %>%
+  html_table()
+population <- population[[1]]
+population$id = paste(j,i,sep = "_")
+population$gender = "m"
+datalist[[i]] <- population
+}
+big_data = do.call(rbind, datalist)
+datalistall[[j]] <- big_data
+}
+runners_men = do.call(rbind, datalistall)
+
+# scrape data from website for women
+datalistall = list()
+for (j in 1:5) {
+  
+  url <- paste("http://hamburg.r.mikatiming.de/2018/?page=",j,"&event=HML&event_main_group=custom.meeting.marathon&num_results=500&pid=list&search[sex]=W&search[age_class]=%25", sep = "")
+  doc <- read_html(url)
+  check = as.data.frame(html_attr(html_nodes(doc, "a"), "href"))
+  colnames(check) = "url"
+  check = filter(check, grepl("?content",url))
+  check$url = paste("http://hamburg.r.mikatiming.de/2018/",check$url,sep = "")
+  
+  datalist = list()
+  for (i in 1:length(check$url)) {
+    
+    url <- check$url[i]
+    population <- url %>%
+      html() %>%
+      html_nodes(xpath='//*[@class="table table-condensed table-striped"]') %>%
+      html_table()
+    population <- population[[1]]
+    population$id = paste(j,i,sep = "_")
+    population$gender = "w"
+    datalist[[i]] <- population
+  }
+  big_data = do.call(rbind, datalist)
+  datalistall[[j]] <- big_data
+}
+
+# combine data
+runners_women = do.call(rbind, datalistall)
+runners = rbind(runners_men,runners_women)
+runners$id = paste(runners$gender,runners$id,sep = "")
+runners = select(runners, id, Split, Zeit)
+runners$Split = gsub(" \\*","",runners$Split)
+runners = dcast(runners, id ~ Split, value.var="Zeit")
+rm(i,j,url,runners_men,runners_women, population,datalist,datalistall,big_data,check,doc)
+
+# format data
+runners$`5km` = chron(times = as.character(runners$`5km`))
+runners$seconds5 = period_to_seconds(hms(runners$`5km`))
+
+runners$`10km` = chron(times = as.character(runners$`10km`))
+runners$seconds10 = period_to_seconds(hms(runners$`10km`))
+
+runners$`15km` = chron(times = as.character(runners$`15km`))
+runners$seconds15 = period_to_seconds(hms(runners$`15km`))
+
+runners$`20km` = chron(times = as.character(runners$`20km`))
+runners$seconds20 = period_to_seconds(hms(runners$`20km`))
+
+runners$`25km` = chron(times = as.character(runners$`25km`))
+runners$seconds25 = period_to_seconds(hms(runners$`25km`))
+
+runners$`30km` = chron(times = as.character(runners$`30km`))
+runners$seconds30 = period_to_seconds(hms(runners$`30km`))
+
+runners$`35km` = chron(times = as.character(runners$`35km`))
+runners$seconds35 = period_to_seconds(hms(runners$`35km`))
+
+runners$`40km` = chron(times = as.character(runners$`40km`))
+runners$seconds40 = period_to_seconds(hms(runners$`40km`))
+
+runners$Finish = chron(times = as.character(runners$Finish))
+runners$secondsFinish = period_to_seconds(hms(runners$Finish))
+
+runners = runners[complete.cases(runners$seconds5), ]
+runners = runners[complete.cases(runners$seconds10), ]
+runners = runners[complete.cases(runners$seconds15), ]
+runners = runners[complete.cases(runners$secondsHalb), ]
+runners = runners[complete.cases(runners$seconds20), ]
+runners = runners[complete.cases(runners$seconds25), ]
+runners = runners[complete.cases(runners$seconds30), ]
+runners = runners[complete.cases(runners$seconds35), ]
+runners = runners[complete.cases(runners$seconds40), ]
+runners = runners[complete.cases(runners$secondsFinish), ]
+
+# select
+runners = runners[12:ncol(runners)]
+
+# import shp alster
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/alster.kml")
 alster = readOGR("alster.kml",import[1])
 alster = fortify(alster)
 
-# import alster
-setwd("C:/Users/Alex/Downloads/")
-import <- ogrListLayers("C:/Users/Alex/Downloads/alsteraus.kml")
+# import shp alster
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/alsteraus.kml")
 alsteraus = readOGR("alsteraus.kml",import[1])
 alsteraus = fortify(alsteraus)
 
-# import stadtpark
-setwd("C:/Users/Alex/Downloads/")
-import <- ogrListLayers("C:/Users/Alex/Downloads/spark.kml")
+# import shp stadtpark
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/spark.kml")
 spark = readOGR("spark.kml",import[1])
 spark = fortify(spark)
 
-# import route
-setwd("C:/Users/Alex/Downloads/")
-import <- ogrListLayers("C:/Users/Alex/Downloads/mlayer.kml")
+# import shp route
+setwd("C:/Users/akruse/Downloads/")
+import <- ogrListLayers("C:/Users/akruse/Downloads/mlayer.kml")
 l2 = readOGR("mlayer.kml",import[1],require_geomType="wkbLineString")
 
 # offset lines
@@ -97,7 +201,7 @@ for (h in them_res) {
   # add more coordinates for precision
   repeat{
     for (i in 2:nrow(res)) {
-      if(res$dist[i] >= 10){
+      if(res$dist[i] >= 1000){
         
         savory = as.data.frame(midPoint(c(res$long[i],res$lat[i]),c(res$long[i-1],res$lat[i-1]))[1])
         savory$lat = midPoint(c(res$long[i],res$lat[i]),c(res$long[i-1],res$lat[i-1]))[2]
@@ -116,7 +220,7 @@ for (h in them_res) {
         res$dist = big_data
       }
     }
-    if (max(res$dist, na.rm = T) < 10) break
+    if (max(res$dist, na.rm = T) < 1000) break
   }
   
   # add cumsum and relative distance
@@ -124,72 +228,26 @@ for (h in them_res) {
   res$dist_max = res$dist_cum/max(res$dist_cum)
   
   # read in runners data and do some processing
-  data = read.csv("Läufer_20180424_160450.csv")
-  data1 = read.csv("Läufer_20180424_160440.csv")
-  data = rbind(data,data1)
+  data = runners
   data = data[seq(its,nrow(data),5),]
-  
-  data$X5.km = chron(times = as.character(data$X5.km))
-  data$seconds5 = period_to_seconds(hms(data$X5.km))
-  
-  data$X10.km = chron(times = as.character(data$X10.km))
-  data$seconds10 = period_to_seconds(hms(data$X10.km))
-  
-  data$X15.km = chron(times = as.character(data$X15.km))
-  data$seconds15 = period_to_seconds(hms(data$X15.km))
-  
-  data$X20.km = chron(times = as.character(data$X20.km))
-  data$seconds20 = period_to_seconds(hms(data$X20.km))
-  
-  data$Halb = chron(times = as.character(data$Halb))
-  data$secondsHalb = period_to_seconds(hms(data$Halb))
-  
-  data$X25.km = chron(times = as.character(data$X25.km))
-  data$seconds25 = period_to_seconds(hms(data$X25.km))
-  
-  data$X30.km = chron(times = as.character(data$X30.km))
-  data$seconds30 = period_to_seconds(hms(data$X30.km))
-  
-  data$X35.km = chron(times = as.character(data$X35.km))
-  data$seconds35 = period_to_seconds(hms(data$X35.km))
-  
-  data$X40.km = chron(times = as.character(data$X40.km))
-  data$seconds40 = period_to_seconds(hms(data$X40.km))
-  
-  data$Brutto = chron(times = as.character(data$Brutto))
-  data$secondsBrutto = period_to_seconds(hms(data$Brutto))
-  
-  data = data[complete.cases(data$seconds5), ]
-  data = data[complete.cases(data$seconds10), ]
-  data = data[complete.cases(data$seconds15), ]
-  data = data[complete.cases(data$secondsHalb), ]
-  data = data[complete.cases(data$seconds20), ]
-  data = data[complete.cases(data$seconds25), ]
-  data = data[complete.cases(data$seconds30), ]
-  data = data[complete.cases(data$seconds35), ]
-  data = data[complete.cases(data$seconds40), ]
-  data = data[complete.cases(data$secondsBrutto), ]
-  
-  #select
-  data = data[9:ncol(data)]
   
   # get position of runners for different times
   datalist = list()
-  for (i in seq(1,max(data$secondsBrutto),13)) {
+  for (i in seq(1,15000,1000)) {
     
     
     for (j in 1:nrow(data)) {
       
-      data$nach60[j] = ifelse(i < data$seconds5[j], ((i/data$seconds5[j])*(5/42.195)),
-                       ifelse(i < data$seconds10[j], (5/42.195)+((i/data$seconds10[j])*(5/42.195)),
-                       ifelse(i < data$seconds15[j], (5/42.195)+(5/42.195)+((i/data$seconds15[j])*(5/42.195)),
-                       ifelse(i < data$seconds20[j], (5/42.195)+(5/42.195)+(5/42.195)+((i/data$seconds20[j])*(5/42.195)),
-                       ifelse(i < data$seconds25[j], (5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+((i/data$seconds25[j])*(5/42.195)),
-                       ifelse(i < data$seconds30[j], (5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+((i/data$seconds30[j])*(5/42.195)), 
-                       ifelse(i < data$seconds35[j], (5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+((i/data$seconds35[j])*(5/42.195)),    
-                       ifelse(i < data$seconds40[j], (5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+((i/data$seconds40[j])*(5/42.195)),         
-                                                     (5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+(5/42.195)+((i/data$secondsBrutto[j])*(2.195/42.195))))))))))              
-
+      data$nach60[j] = ifelse(i <= data$seconds5[j], ((i/data$seconds5[j])*(5/42.195)),
+                              ifelse(i <= data$seconds10[j], (5/42.195)+(((i-data$seconds5[j])/(data$seconds10[j]-data$seconds5[j]))*(5/42.195)),
+                                     ifelse(i <= data$seconds15[j], (10/42.195)+(((i-data$seconds10[j])/(data$seconds15[j]-data$seconds10[j]))*(5/42.195)),
+                                            ifelse(i <= data$seconds20[j], (15/42.195)+(((i-data$seconds15[j])/(data$seconds20[j]-data$seconds15[j]))*(5/42.195)),
+                                                   ifelse(i <= data$seconds25[j], (20/42.195)+(((i-data$seconds20[j])/(data$seconds25[j]-data$seconds20[j]))*(5/42.195)),
+                                                          ifelse(i <= data$seconds30[j], (25/42.195)+(((i-data$seconds25[j])/(data$seconds30[j]-data$seconds25[j]))*(5/42.195)), 
+                                                                 ifelse(i <= data$seconds35[j], (30/42.195)+(((i-data$seconds30[j])/(data$seconds35[j]-data$seconds30[j]))*(5/42.195)),    
+                                                                        ifelse(i <= data$seconds40[j], (35/42.195)+(((i-data$seconds35[j])/(data$seconds40[j]-data$seconds35[j]))*(5/42.195)),         
+                                                                               (40/42.195)+(((i-data$seconds40[j])/(data$secondsFinish[j]-data$seconds40[j]))*(2.195/42.195))))))))))              
+      
       
       data$lon[j] = res$long[which.min(abs(res$dist_max - data$nach60[j]))]
       data$lat[j] = res$lat[which.min(abs(res$dist_max - data$nach60[j]))]
@@ -265,3 +323,4 @@ plot.save = function(i=1){
 
 map(seq(1,max(data$secondsBrutto),1300), plot.save)
 map(seq(1,max(data$secondsBrutto),13), plot.save)
+
