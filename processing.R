@@ -8,7 +8,7 @@ require(chron)
 require(lubridate)
 require(tmaptools)
 require(extrafont)
-require(dcast)
+require(reshape2)
 require(httr)
 
 # load more fonts for plot design (via extrafont package)
@@ -18,28 +18,28 @@ loadfonts(device = "win")
 datalistall = list()
 for (j in 1:16) {
   
-url <- paste("http://hamburg.r.mikatiming.de/2018/?page=",j,"&event=HML&event_main_group=custom.meeting.marathon&num_results=500&pid=list&search[sex]=M&search[age_class]=%25", sep = "")
-doc <- read_html(url)
-check = as.data.frame(html_attr(html_nodes(doc, "a"), "href"))
-colnames(check) = "url"
-check = filter(check, grepl("?content",url))
-check$url = paste("http://hamburg.r.mikatiming.de/2018/",check$url,sep = "")
-
-datalist = list()
-for (i in 1:length(check$url)) {
-
-url <- check$url[i]
-population <- url %>%
-  html() %>%
-  html_nodes(xpath='//*[@class="table table-condensed table-striped"]') %>%
-  html_table()
-population <- population[[1]]
-population$id = paste(j,i,sep = "_")
-population$gender = "m"
-datalist[[i]] <- population
-}
-big_data = do.call(rbind, datalist)
-datalistall[[j]] <- big_data
+  url <- paste("http://hamburg.r.mikatiming.de/2018/?page=",j,"&event=HML&event_main_group=custom.meeting.marathon&num_results=500&pid=list&search[sex]=M&search[age_class]=%25", sep = "")
+  doc <- read_html(url)
+  check = as.data.frame(html_attr(html_nodes(doc, "a"), "href"))
+  colnames(check) = "url"
+  check = filter(check, grepl("?content",url))
+  check$url = paste("http://hamburg.r.mikatiming.de/2018/",check$url,sep = "")
+  
+  datalist = list()
+  for (i in 1:length(check$url)) {
+    
+    url <- check$url[i]
+    population <- url %>%
+      html() %>%
+      html_nodes(xpath='//*[@class="table table-condensed table-striped"]') %>%
+      html_table()
+    population <- population[[1]]
+    population$id = paste(j,i,sep = "_")
+    population$gender = "m"
+    datalist[[i]] <- population
+  }
+  big_data = do.call(rbind, datalist)
+  datalistall[[j]] <- big_data
 }
 runners_men = do.call(rbind, datalistall)
 
@@ -123,26 +123,26 @@ runners = runners[complete.cases(runners$secondsFinish), ]
 runners = runners[12:ncol(runners)]
 
 # import shp alster
-setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/alster.kml")
+setwd("C:/Users/Alex/Downloads/")
+import <- ogrListLayers("C:/Users/Alex/Downloads/alster.kml")
 alster = readOGR("alster.kml",import[1])
 alster = fortify(alster)
 
 # import shp alster
-setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/alsteraus.kml")
+setwd("C:/Users/Alex/Downloads/")
+import <- ogrListLayers("C:/Users/Alex/Downloads/alsteraus.kml")
 alsteraus = readOGR("alsteraus.kml",import[1])
 alsteraus = fortify(alsteraus)
 
 # import shp stadtpark
-setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/spark.kml")
+setwd("C:/Users/Alex/Downloads/")
+import <- ogrListLayers("C:/Users/Alex/Downloads/spark.kml")
 spark = readOGR("spark.kml",import[1])
 spark = fortify(spark)
 
 # import shp route
-setwd("C:/Users/akruse/Downloads/")
-import <- ogrListLayers("C:/Users/akruse/Downloads/mlayer.kml")
+setwd("C:/Users/Alex/Downloads/")
+import <- ogrListLayers("C:/Users/Alex/Downloads/mlayer.kml")
 l2 = readOGR("mlayer.kml",import[1],require_geomType="wkbLineString")
 
 # offset lines
@@ -201,7 +201,7 @@ for (h in them_res) {
   # add more coordinates for precision
   repeat{
     for (i in 2:nrow(res)) {
-      if(res$dist[i] >= 1000){
+      if(res$dist[i] >= 10){
         
         savory = as.data.frame(midPoint(c(res$long[i],res$lat[i]),c(res$long[i-1],res$lat[i-1]))[1])
         savory$lat = midPoint(c(res$long[i],res$lat[i]),c(res$long[i-1],res$lat[i-1]))[2]
@@ -220,7 +220,7 @@ for (h in them_res) {
         res$dist = big_data
       }
     }
-    if (max(res$dist, na.rm = T) < 1000) break
+    if (max(res$dist, na.rm = T) < 10) break
   }
   
   # add cumsum and relative distance
@@ -233,7 +233,7 @@ for (h in them_res) {
   
   # get position of runners for different times
   datalist = list()
-  for (i in seq(1,15000,1000)) {
+  for (i in seq(1,max(runners$secondsFinish),20)) {
     
     
     for (j in 1:nrow(data)) {
@@ -315,12 +315,9 @@ p.progress = function(i= 1, maxi = max(all_data$pasted_secs)){
 # function for saving images
 plot.save = function(i=1){
   file_path = paste0("C:/Users/Alex/Documents/gif/marathon/", "/plot_",i ,".png")
-  ggsave(filename=file_path, p.progress(i), dpi = 1000, width = 7, height = 7)
+  ggsave(filename=file_path, p.progress(i), dpi = 500, width = 7, height = 7)
   
 }
 
 # save images
-
-map(seq(1,max(data$secondsBrutto),1300), plot.save)
-map(seq(1,max(data$secondsBrutto),13), plot.save)
-
+map(seq(1,max(runners$secondsFinish),20), plot.save)
