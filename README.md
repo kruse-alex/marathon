@@ -1,2 +1,2 @@
-## In Progress: Animated Map of all Runners from Hamburg Marathon 2018
-![alt text](https://github.com/kruse-alex/marathon/blob/master/plot_10001.png)
+## Time lapse of all runners from last weekend's Hamburg Marathon
+![alt text](https://github.com/kruse-alex/marathon/blob/master/marathon_long.gif)
